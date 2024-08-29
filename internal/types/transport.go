@@ -6,3 +6,7 @@ package types
 type Transport interface {
 	ListenAndAccept() error
 }
+
+// Represents each node in a network
+type Peer interface {
+}
