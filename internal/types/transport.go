@@ -9,4 +9,6 @@ type Transport interface {
 
 // Represents each node in a network
 type Peer interface {
+	Connect()
+	Disconnect()
 }
