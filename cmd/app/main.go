@@ -20,13 +20,13 @@ func main() {
 \_______)   )_(   |/     \||/   \__/(_______/\_______/(_______)|/     \|   )_(     (_______/|/     \||/   \__/(_______)(_______)
 `)
 
-	time.Sleep(time.Millisecond * 1400)
+	time.Sleep(time.Millisecond * 800)
 	fmt.Printf("Welcome to Starlight Cargo - Your Galactic File Management System!\n\n")
-	time.Sleep(time.Millisecond * 1400)
+	time.Sleep(time.Millisecond * 800)
 	fmt.Printf("Initializing the interstellar transport layer...\n\n")
 
 	opts := transport.Opts{
-		Port: 3600,
+		ListenAddr: 3600,
 	}
 
 	tcpTransport := transport.NewTCPTransport(opts)

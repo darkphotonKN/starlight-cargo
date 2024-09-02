@@ -4,25 +4,40 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/darkphotonKN/starlight-cargo/internal/types"
 	"github.com/google/uuid"
 )
 
+// TODO: temp enacting as the database of users
+type User struct {
+	email    string
+	password string
+}
+
+var users = make(map[string]User)
+
 type TCPTransport struct {
 	Peers    map[string]*Peer
 	listener net.Listener
-	opts     Opts
+	Opts     Opts
 }
 
 type Opts struct {
-	Port int
+	ListenAddr uint
 }
 
 // factory function to TCPTransport
 func NewTCPTransport(opts Opts) types.Transport {
+	// preloading users
+	users[uuid.NewString()] = User{
+		email:    "darkphoton20@gmail.com",
+		password: "123456",
+	}
+
 	return &TCPTransport{
-		opts:  opts,
+		Opts:  opts,
 		Peers: make(map[string]*Peer),
 	}
 }
@@ -59,7 +74,7 @@ func NewPeer(addr net.Addr, conn net.Conn) types.Peer {
 * Starts a TCP server and listens for connections.
 **/
 func (t *TCPTransport) ListenAndAccept() error {
-	port := fmt.Sprintf(":%d", t.opts.Port)
+	port := fmt.Sprintf(":%d", t.Opts.ListenAddr)
 
 	var err error
 	t.listener, err = net.Listen("tcp", port)
@@ -118,11 +133,85 @@ const (
 * Starts individual goroutines to serve incoming messages.
 **/
 func (t *TCPTransport) handleConnection(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		fmt.Printf("Closing connection for peer %s", conn.RemoteAddr())
+		conn.Close()
+	}()
+
+	// -- authorize user loop --
+
+	for {
+		// email input handling
+		conn.Write([]byte("Please enter email.\n"))
+
+		// read response
+		var emailResBuf = make([]byte, 128)
+		n, err := conn.Read(emailResBuf)
+
+		if err != nil {
+			fmt.Printf("Error reading incoming message for email input: %s\n", err)
+			continue
+		}
+
+		// only extract the readable part of the buffer
+		trimmedEmailRes := strings.TrimSpace(string(emailResBuf[:n]))
+
+		fmt.Println("Received email:", trimmedEmailRes)
+
+		// check if user exists
+		exists := false
+		var existingUser User
+
+		for _, user := range users {
+			if user.email == trimmedEmailRes {
+				exists = true
+				existingUser = user
+			}
+		}
+
+		if !exists {
+			fmt.Println("Email was incorrect.", string(emailResBuf))
+			conn.Write([]byte("Email was incorrect.\n"))
+
+			// repeat and ask again
+			continue
+		}
+
+		// password input handling
+		conn.Write([]byte("Please enter password.\n"))
+
+		var pwResBuf = make([]byte, 128)
+		n, err = conn.Read(pwResBuf)
+
+		if err != nil {
+			fmt.Printf("Error reading incoming message for password input: %s\n", err)
+			continue
+		}
+
+		// only extract the readable part of the buffer
+		trimmedPwRes := strings.TrimSpace(string(pwResBuf[:n]))
+
+		if trimmedPwRes != existingUser.password {
+			fmt.Println("Password was incorrect.", string(trimmedPwRes))
+			conn.Write([]byte("Password was incorrect.\n"))
+			continue
+		}
+
+		// break out of loop if user exist
+		break
+	}
+
+	fmt.Println("Auth passed")
+
+	// -- user authenticated - handle command payload loop --
 
 	MAX_MSG_SIZE := 2048
 
 	for {
+		fmt.Println("Starting connected read loop.")
+
+		conn.Write([]byte("You have been connected. Please type a command.\n"))
+
 		// handle messages with this new peer new connection
 		var buf = make([]byte, MAX_MSG_SIZE)
 
@@ -149,15 +238,18 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		case CMD_MESSAGE:
 			fmt.Printf("Received message command. Payload: %s", payload)
+			t.broadcastToAll(payload)
+
 		default:
-			fmt.Printf("No matching command.")
+			fmt.Println("Unknown command.")
 			// stop function and disconnect
 			return
 		}
 
-		t.broadcastToAll(msg)
 	}
-} /**
+}
+
+/**
 * Parses a command from the tcp peer-to-peer msg.
 * Assumes space has the the pre-defined meaning of separating command from payload.
 **/
@@ -166,6 +258,13 @@ func (t *TCPTransport) parseCommand(msg []byte) (string, []byte) {
 	// NOTE: force only one split, with space being the separator of command and payload
 	cmdAndPayload := bytes.SplitN(msg, []byte(" "), 2)
 
+	// check for message to fit the predefined protocol and hence have two parts
+	if len(cmdAndPayload) < 2 {
+		return string(cmdAndPayload[0]), nil
+
+	}
+
+	// first part is the command, second part the payload
 	return string(cmdAndPayload[0]), cmdAndPayload[1]
 }
 
@@ -186,5 +285,8 @@ func (t *TCPTransport) broadcastToAll(msg []byte) {
 			}
 		}
 	}
+}
+
+func (t *TCPTransport) AuthenticateUser() {
 
 }
