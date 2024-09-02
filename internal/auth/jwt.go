@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	SECRET_KEY = "randomsecretkey"
+)
+
 // defines the structure of the JWT payload
 type JWTClaims struct {
 	UserID string `json:"user_id"`

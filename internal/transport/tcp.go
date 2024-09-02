@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/darkphotonKN/starlight-cargo/internal/auth"
 	"github.com/darkphotonKN/starlight-cargo/internal/types"
 	"github.com/google/uuid"
 )
@@ -123,10 +124,16 @@ func (t *TCPTransport) AcceptLoop() {
 	}
 }
 
+// constants for commands
 const (
 	CMD_UPLOAD   string = "upload"
 	CMD_DOWNLOAD string = "download"
 	CMD_MESSAGE  string = "message"
+)
+
+// constants for status
+const (
+	AUTHENTICATED string = "AUTHENTICATED"
 )
 
 /**
@@ -138,7 +145,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		conn.Close()
 	}()
 
-	// -- authorize user loop --
+	// -- 1. authorize user loop --
 
 	for {
 		// email input handling
@@ -197,20 +204,24 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 			continue
 		}
 
-		// break out of loop if user exist
+		// authentication passed, provide credentials then break out to next step
+		accessToken, err := auth.GenerateJWT(existingUser.email, []byte(auth.SECRET_KEY))
+		if err != nil {
+			fmt.Println("Error when generating jwt.")
+			continue
+		}
+		conn.Write([]byte(fmt.Sprintf("%s:%s", AUTHENTICATED, accessToken)))
+
 		break
 	}
 
-	fmt.Println("Auth passed")
-
-	// -- user authenticated - handle command payload loop --
+	// -- 2. user authenticated - handle command payload loop --
 
 	MAX_MSG_SIZE := 2048
 
 	for {
-		fmt.Println("Starting connected read loop.")
 
-		conn.Write([]byte("You have been connected. Please type a command.\n"))
+		conn.Write([]byte("You are connected. Please type a command.\n"))
 
 		// handle messages with this new peer new connection
 		var buf = make([]byte, MAX_MSG_SIZE)
