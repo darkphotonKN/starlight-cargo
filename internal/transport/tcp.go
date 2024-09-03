@@ -230,7 +230,8 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		if err != nil {
 			fmt.Printf("Error reading incoming message: %s\n", err)
-			return
+			// let user try again if message read errored
+			continue
 		}
 
 		msg := buf[:bufLen]
@@ -238,7 +239,17 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		fmt.Printf("%s", string(msg))
 
 		// read command from buffer
-		command, payload := t.parseCommand(msg)
+		accessToken, command, payload := t.parseCommand(msg)
+
+		// authorize access token
+		_, err = auth.ValidateJWT(accessToken, []byte(auth.SECRET_KEY))
+
+		// authorization failed break loop and disconnect user
+		if err != nil {
+			fmt.Println("Error when validating access token.")
+			t.sendErrorMessage(AUTH_ERROR, conn)
+			break
+		}
 
 		switch command {
 		case CMD_UPLOAD:
@@ -249,7 +260,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		case CMD_MESSAGE:
 			fmt.Printf("Received message command. Payload: %s", payload)
-			t.broadcastToAll(payload)
+			conn.Write([]byte(fmt.Sprintf("Received payload: %s\n", payload)))
 
 		default:
 			fmt.Println("Unknown command.")
@@ -260,23 +271,47 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 	}
 }
 
+type ErrorType int
+
+const (
+	AUTH_ERROR ErrorType = iota
+	MSG_ERROR
+)
+
+/**
+* Sends a fixed messages back to client.
+**/
+func (t *TCPTransport) sendErrorMessage(e ErrorType, conn net.Conn) {
+
+	switch e {
+
+	case AUTH_ERROR:
+		conn.Write([]byte("Access token was unauthorized."))
+
+	case MSG_ERROR:
+		conn.Write([]byte("Message format was incorrect."))
+
+	}
+
+}
+
 /**
 * Parses a command from the tcp peer-to-peer msg.
 * Assumes space has the the pre-defined meaning of separating command from payload.
 **/
-func (t *TCPTransport) parseCommand(msg []byte) (string, []byte) {
+func (t *TCPTransport) parseCommand(msg []byte) (string, string, []byte) {
 
-	// NOTE: force only one split, with space being the separator of command and payload
-	cmdAndPayload := bytes.SplitN(msg, []byte(" "), 2)
+	// NOTE: force split into pre-defined structure of [accessToken] space [command] space [payload]
+	msgPack := bytes.SplitN(msg, []byte(" "), 3)
 
 	// check for message to fit the predefined protocol and hence have two parts
-	if len(cmdAndPayload) < 2 {
-		return string(cmdAndPayload[0]), nil
+	if len(msgPack) < 3 {
+		return string(msgPack[0]), "", nil
 
 	}
 
 	// first part is the command, second part the payload
-	return string(cmdAndPayload[0]), cmdAndPayload[1]
+	return string(msgPack[0]), string(msgPack[1]), msgPack[2]
 }
 
 /**
