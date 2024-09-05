@@ -146,8 +146,40 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 	}()
 
 	// -- 1. authorize user loop --
+	err := t.handleAuthorizationLoop(conn)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// -- 2. user authenticated - handle command payload loop --
+	err = t.handleCommandLoop(conn)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+/**
+* Loop that authorizes the user until they've entered a mistake three times.
+**/
+
+func (t *TCPTransport) handleAuthorizationLoop(conn net.Conn) error {
+	attempts := 0
 
 	for {
+
+		// exit out of loop and hence close connection (defer of handleConnection) if user enters
+		// the wrong email or password 3 times
+
+		if attempts == 3 {
+
+			t.sendErrorMessage(ErrorMsg{errorType: MSG_ERROR, customMsg: "Too many attempts."}, conn)
+			return fmt.Errorf("Too many attempts.")
+		}
+
 		// email input handling
 		conn.Write([]byte("Please enter email.\n"))
 
@@ -178,6 +210,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		if !exists {
 			fmt.Println("Email was incorrect.", string(emailResBuf))
+			attempts++
 			conn.Write([]byte("Email was incorrect.\n"))
 
 			// repeat and ask again
@@ -200,6 +233,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		if trimmedPwRes != existingUser.password {
 			fmt.Println("Password was incorrect.", string(trimmedPwRes))
+			attempts++
 			conn.Write([]byte("Password was incorrect.\n"))
 			continue
 		}
@@ -215,10 +249,16 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		break
 	}
 
-	// -- 2. user authenticated - handle command payload loop --
+	// no error, successfully passed authentication
+	return nil
+}
+
+/**
+* Authorized command loop to handle command operations.
+**/
+func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 
 	MAX_MSG_SIZE := 2048
-
 	for {
 
 		conn.Write([]byte("You are connected. Please type a command.\n"))
@@ -246,9 +286,9 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 
 		// authorization failed break loop and disconnect user
 		if err != nil {
-			fmt.Println("Error when validating access token.")
-			t.sendErrorMessage(AUTH_ERROR, conn)
-			break
+			t.sendErrorMessage(ErrorMsg{errorType: AUTH_ERROR}, conn)
+
+			return fmt.Errorf("Error when validating access token.")
 		}
 
 		switch command {
@@ -265,9 +305,8 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		default:
 			fmt.Println("Unknown command.")
 			// stop function and disconnect
-			return
+			continue
 		}
-
 	}
 }
 
@@ -278,21 +317,35 @@ const (
 	MSG_ERROR
 )
 
+type ErrorMsg struct {
+	errorType ErrorType
+	customMsg string
+}
+
 /**
 * Sends a fixed messages back to client.
 **/
-func (t *TCPTransport) sendErrorMessage(e ErrorType, conn net.Conn) {
+func (t *TCPTransport) sendErrorMessage(e ErrorMsg, conn net.Conn) {
+	msg := ""
 
-	switch e {
+	switch e.errorType {
 
 	case AUTH_ERROR:
-		conn.Write([]byte("Access token was unauthorized."))
+		if e.customMsg != "" {
+			msg = e.customMsg
+		} else {
+			msg = "Access token was unauthorized."
+		}
 
 	case MSG_ERROR:
-		conn.Write([]byte("Message format was incorrect."))
-
+		if e.customMsg != "" {
+			msg = e.customMsg
+		} else {
+			msg = "Access token was unauthorized."
+		}
 	}
 
+	conn.Write([]byte(msg))
 }
 
 /**
