@@ -165,17 +165,14 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 /**
 * Loop that authorizes the user until they've entered a mistake three times.
 **/
-
 func (t *TCPTransport) handleAuthorizationLoop(conn net.Conn) error {
 	attempts := 0
 
 	for {
-
 		// exit out of loop and hence close connection (defer of handleConnection) if user enters
 		// the wrong email or password 3 times
 
 		if attempts == 3 {
-
 			t.sendErrorMessage(ErrorMsg{errorType: MSG_ERROR, customMsg: "Too many attempts."}, conn)
 			return fmt.Errorf("Too many attempts.")
 		}
@@ -244,7 +241,7 @@ func (t *TCPTransport) handleAuthorizationLoop(conn net.Conn) error {
 			fmt.Println("Error when generating jwt.")
 			continue
 		}
-		conn.Write([]byte(fmt.Sprintf("%s:%s", AUTHENTICATED, accessToken)))
+		conn.Write([]byte(fmt.Sprintf("%s:%s\n", AUTHENTICATED, accessToken)))
 
 		break
 	}
@@ -260,7 +257,6 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 
 	MAX_MSG_SIZE := 2048
 	for {
-
 		conn.Write([]byte("You are connected. Please type a command.\n"))
 
 		// handle messages with this new peer new connection
@@ -280,6 +276,10 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 
 		// read command from buffer
 		accessToken, command, payload := t.parseCommand(msg)
+
+		fmt.Println()
+		fmt.Println("DEBUG accessToken:", accessToken)
+		fmt.Println()
 
 		// authorize access token
 		_, err = auth.ValidateJWT(accessToken, []byte(auth.SECRET_KEY))

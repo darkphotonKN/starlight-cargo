@@ -8,7 +8,6 @@ import (
 )
 
 func TestTCP(t *testing.T) {
-
 	// set up new tcp connection to simulate a client attemtping to connect
 	opts := transport.Opts{
 		ListenAddr: 3999,

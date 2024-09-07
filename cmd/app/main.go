@@ -21,9 +21,9 @@ func main() {
 `)
 
 	time.Sleep(time.Millisecond * 800)
-	fmt.Printf("Welcome to Starlight Cargo - Your Galactic File Management System!\n\n")
+	fmt.Printf("You have launched the server of the starlight cargo system.\n\n")
 	time.Sleep(time.Millisecond * 800)
-	fmt.Printf("Initializing the interstellar transport layer...\n\n")
+	fmt.Printf("Initializing the interstellar transport server and awaiting starship connections...\n\n")
 
 	opts := transport.Opts{
 		ListenAddr: 3600,

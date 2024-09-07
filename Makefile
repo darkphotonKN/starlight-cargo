@@ -2,10 +2,10 @@
 .PHONY: test 
 	
 build:
-	 @go build -o bin/fs ./cmd/app/
+	 @go build -o bin/starlight-cargo ./cmd/app/
 	
 run: build
-	@./bin/fs
+	@./bin/starlight-cargo
 
 test:
 	@go test ./...
