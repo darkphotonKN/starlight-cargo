@@ -264,6 +264,11 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 
 		bufLen, err := conn.Read(buf)
 
+		// clean up connection if client has disconnected
+		if err == net.ErrClosed {
+			return err
+		}
+
 		if err != nil {
 			fmt.Printf("Error reading incoming message: %s\n", err)
 			// let user try again if message read errored
@@ -363,7 +368,6 @@ func (t *TCPTransport) parseCommand(msg []byte) (string, string, []byte) {
 
 	}
 
-	// first part is the command, second part the payload
 	return string(msgPack[0]), string(msgPack[1]), msgPack[2]
 }
 
