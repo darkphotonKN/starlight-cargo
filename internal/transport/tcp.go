@@ -121,6 +121,9 @@ func (t *TCPTransport) AcceptLoop() {
 		t.Peers[peer.ID] = peer
 		peer.Connect() // update to connected state
 		go t.handleConnection(conn)
+
+		// start a go routine to concurrently check for idle connections
+		go t.observeConnections()
 	}
 }
 
@@ -372,7 +375,7 @@ func (t *TCPTransport) parseCommand(msg []byte) (string, string, []byte) {
 }
 
 /**
-* Broadcasts message to all users.
+* Helper that broadcasts a message to all connected users.
 **/
 func (t *TCPTransport) broadcastToAll(msg []byte) {
 	fmt.Println("Broadcasting to all..")
@@ -388,8 +391,24 @@ func (t *TCPTransport) broadcastToAll(msg []byte) {
 			}
 		}
 	}
+
 }
 
 func (t *TCPTransport) AuthenticateUser() {
 
+}
+
+/**
+* TODO: Add actual check.
+* Observe connections for idle connections and handle them.
+**/
+func (t *TCPTransport) observeConnections() {
+	// for {
+	// 	// check idle connections every ten seconds
+	// 	time.Sleep(time.Second * 10)
+	//
+	// 	for index, peer := range t.Peers {
+	// 		fmt.Printf("Current Peer no. %s: %+v", index, peer)
+	// 	}
+	// }
 }
