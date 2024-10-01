@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/darkphotonKN/starlight-cargo/internal/auth"
+	fileservice "github.com/darkphotonKN/starlight-cargo/internal/file_service"
 	"github.com/darkphotonKN/starlight-cargo/internal/types"
 	"github.com/google/uuid"
 )
@@ -20,9 +21,10 @@ type User struct {
 var users = make(map[string]User)
 
 type TCPTransport struct {
-	Peers    map[string]*Peer
-	listener net.Listener
-	Opts     Opts
+	Peers       map[string]*Peer
+	listener    net.Listener
+	Opts        Opts
+	fileService *fileservice.FileService
 }
 
 type Opts struct {
@@ -30,7 +32,8 @@ type Opts struct {
 }
 
 // factory function to TCPTransport
-func NewTCPTransport(opts Opts) types.Transport {
+func NewTCPTransport(opts Opts, fileService *fileservice.FileService) types.Transport {
+
 	// preloading users
 	users[uuid.NewString()] = User{
 		email:    "darkphoton20@gmail.com",
@@ -38,8 +41,9 @@ func NewTCPTransport(opts Opts) types.Transport {
 	}
 
 	return &TCPTransport{
-		Opts:  opts,
-		Peers: make(map[string]*Peer),
+		Opts:        opts,
+		Peers:       make(map[string]*Peer),
+		fileService: fileService,
 	}
 }
 
@@ -285,9 +289,8 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 		// read command from buffer
 		accessToken, command, payload := t.parseCommand(msg)
 
-		fmt.Println()
-		fmt.Println("DEBUG accessToken:", accessToken)
-		fmt.Println()
+		fmt.Print("\nDEBUG accessToken:\n\n", accessToken)
+		fmt.Println("command:", command)
 
 		// authorize access token
 		_, err = auth.ValidateJWT(accessToken, []byte(auth.SECRET_KEY))
@@ -302,6 +305,7 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 		switch command {
 		case CMD_UPLOAD:
 			fmt.Printf("Received upload command. Payload: %s", payload)
+			t.fileService.UploadFile([]byte{})
 
 		case CMD_DOWNLOAD:
 			fmt.Printf("Received download command. Payload: %s", payload)

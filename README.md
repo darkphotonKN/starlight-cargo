@@ -6,4 +6,4 @@
 
 This application serves as a Distributed File Storage System. At its core it allows users to store and retrieve files that are carefully
 stored across mutliple servers / nodes together with fault tolerance and using DHT (distributed hash tables), which _enables retrieval of
-the pieces without needing a central directory_.
+the file pieces without needing a central directory_.

@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	fileservice "github.com/darkphotonKN/starlight-cargo/internal/file_service"
 	"github.com/darkphotonKN/starlight-cargo/internal/transport"
 )
 
@@ -29,7 +30,9 @@ func main() {
 		ListenAddr: 3600,
 	}
 
-	tcpTransport := transport.NewTCPTransport(opts)
+	// creating file service for injection
+	fs := fileservice.NewFileService()
+	tcpTransport := transport.NewTCPTransport(opts, fs)
 	err := tcpTransport.ListenAndAccept()
 
 	if err != nil {
