@@ -1,6 +1,9 @@
 package fileservice
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 /**
 * A service to group the methods responsible for handling files.
@@ -20,8 +23,18 @@ func (fs *FileService) DownloadFile(id string) ([]byte, error) {
 	return []byte{}, nil
 }
 
-// TODO: requires implementation
+/**
+* Handles uploading files.
+* Pre-defined structure of the file payload is:
+* A slice of bytes encoded from the file size + an empty space + file name
+**/
 func (fs *FileService) UploadFile(file []byte) error {
-	fmt.Println("Upload file")
+	byteParts := bytes.SplitN(file, []byte(" "), 2)
+	fileName := string(byteParts[0])
+	fileSize := string(byteParts[1])
+
+	fmt.Println("fileName:", fileName)
+	fmt.Println("fileSize:", fileSize)
+
 	return nil
 }

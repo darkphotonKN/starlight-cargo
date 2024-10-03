@@ -263,6 +263,7 @@ func (t *TCPTransport) handleAuthorizationLoop(conn net.Conn) error {
 func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 
 	MAX_MSG_SIZE := 2048
+
 	for {
 		conn.Write([]byte("You are connected. Please type a command.\n"))
 
@@ -302,10 +303,11 @@ func (t *TCPTransport) handleCommandLoop(conn net.Conn) error {
 			return fmt.Errorf("Error when validating access token.")
 		}
 
+		// handle different actions based on command
 		switch command {
 		case CMD_UPLOAD:
 			fmt.Printf("Received upload command. Payload: %s", payload)
-			t.fileService.UploadFile([]byte{})
+			t.fileService.UploadFile(payload)
 
 		case CMD_DOWNLOAD:
 			fmt.Printf("Received download command. Payload: %s", payload)
@@ -363,18 +365,15 @@ func (t *TCPTransport) sendErrorMessage(e ErrorMsg, conn net.Conn) {
 /**
 * Parses a command from the tcp peer-to-peer msg.
 * Assumes space has the the pre-defined meaning of separating command from payload.
+* The structure is token[empty space]command[empty space]payload where [emtpy space] is a blank space character in the byte slice.
 **/
 func (t *TCPTransport) parseCommand(msg []byte) (string, string, []byte) {
-
-	// NOTE: force split into pre-defined structure of [accessToken] space [command] space [payload]
 	msgPack := bytes.SplitN(msg, []byte(" "), 3)
 
 	// check for message to fit the predefined protocol and hence have two parts
 	if len(msgPack) < 3 {
 		return string(msgPack[0]), "", nil
-
 	}
-
 	return string(msgPack[0]), string(msgPack[1]), msgPack[2]
 }
 
@@ -395,11 +394,6 @@ func (t *TCPTransport) broadcastToAll(msg []byte) {
 			}
 		}
 	}
-
-}
-
-func (t *TCPTransport) AuthenticateUser() {
-
 }
 
 /**
